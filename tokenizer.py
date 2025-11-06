@@ -1,4 +1,9 @@
-def encode(string, vocab):
+import pickle
+
+# Add a padding token constant
+PADDING_TOKEN = 0
+
+def encode(string, vocab, max_length=None):
     # string to tokens
     bytes = list(string.encode("utf-8"))
     merges = len(vocab) - 256
@@ -7,9 +12,19 @@ def encode(string, vocab):
         bytes = merge(bytes, vocab[token], token)
         token += 1
 
+    # Add padding if max_length is specified
+    if max_length is not None:
+        if len(bytes) > max_length:
+            bytes = bytes[:max_length]  # Truncate if too long
+        else:
+            bytes.extend([PADDING_TOKEN] * (max_length - len(bytes)))  # Pad if too short
+
     return bytes
 
 def decode(tokens, vocab):
+    # Remove padding tokens
+    tokens = [token for token in tokens if token != PADDING_TOKEN]
+
     # tokens to string
     tokens = b"".join(vocab[token] for token in tokens)
     text = tokens.decode("utf-8")
@@ -56,8 +71,8 @@ def build_vocab(data, vocab_size):
         merges[pair] = token
         token += 1
 
-
     vocab = {idx: bytes([idx]) for idx in range(256)}
+    vocab[PADDING_TOKEN] = b""  # Add padding token
     token = 256
 
     for (a, b), token in merges.items():
@@ -65,3 +80,11 @@ def build_vocab(data, vocab_size):
         token += 1
 
     return vocab
+
+def save_tokenizer(vocab, filepath):
+    with open(filepath, 'wb') as file:
+        pickle.dump(vocab, file)
+
+def load_tokenizer(filepath):
+    with open(filepath, 'rb') as file:
+        return pickle.load(file)
